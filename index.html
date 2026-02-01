@@ -7,138 +7,97 @@
       W8Team
     </title>
     <style>
-      html,body{
-        margin:0;
-        height:100%;
-        background:#111;
-        overflow:hidden;
-      }
-      canvas{
-        width:100vw;
-        height:100vh;
-        display:block;
-      }
+      html,body{margin:0;height:100%;background:#111;overflow:hidden;}
+    canvas{width:100vw;height:100vh;display:block;}
 
-      /* উপরের আলাদা স্ক্রিন */
-      .overlay-screen{
-        position:fixed;
-        inset:0;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        pointer-events:none; /* ক্লিক/টাচ নিচের ক্যানভাসেই যাবে */
-        z-index:10;
-        /* চাইলে ব্যাকগ্রাউন্ড হালকা ডার্ক গ্লাসের মত */
-        background:radial-gradient(circle at center,
-          rgba(0,0,0,0.4) 0%,
-          rgba(0,0,0,0.75) 55%,
-          rgba(0,0,0,0.9) 100%);
-      }
-      .overlay-box{
-        text-align:center;
-        font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-        color:#22c55e;
-        font-size:20px;
-        line-height:1.7;
-        padding:12px 20px;
-        border-radius:16px;
-        border:1px solid rgba(34,197,94,0.5);
-        background:rgba(0,0,0,0.55);
-        text-shadow:0 0 8px rgba(34,197,94,0.9),
-                    0 0 22px rgba(34,197,94,0.75);
-        animation:overlayPulse 1.8s ease-in-out infinite;
-      }
-      .overlay-box div{
-        display:block;
-      }
-      @keyframes overlayPulse{
-        0%{
-          opacity:0.8;
-          transform:scale(1);
-        }
-        50%{
-          opacity:1;
-          transform:scale(1.06);
-          text-shadow:0 0 14px rgba(34,197,94,1),
-                      0 0 30px rgba(34,197,94,0.9);
-        }
-        100%{
-          opacity:0.85;
-          transform:scale(1);
-        }
-      }
+/* উপরের লেখা দেখানোর জন্য */
+.overlay-text{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color:#22c55e;
+  font-size:18px;
+  line-height:1.7;
+  padding:10px 18px;
+  pointer-events:none; /* ক্লিক নিচের ক্যানভাসেই যাবে */
+  z-index:10;
+  text-shadow:0 0 8px rgba(34,197,94,0.9),
+              0 0 20px rgba(34,197,94,0.8);
+}
     </style>
   </head>
   <body>
-    <canvas id="gl"></canvas>
-    <audio id="bgAudio" src="Louad3.mp3" loop></audio>
+    <canvas id="gl">
+    </canvas>
+    <audio id="bgAudio" src="Louad3.mp3" loop="">
+    </audio>
 
-    <!-- পুরো মূল স্ক্রিনের উপরে আলাদা স্ক্রিন -->
-    <div class="overlay-screen">
-      <div class="overlay-box">
-        <div>ইয়াসিন আদনানের পক্ষ থেকে শুভেচ্ছা🎉</div>
-        <div>ভালো থাকবেন☺️</div>
+    <!-- স্ক্রিনের উপর লেখা -->
+    <div class="overlay-text">
+      <div>
+        বন্ধু কী মজা এখন বুঝবে তোমার মোবাইল কতটুকু ভালা😁<br/>
+        ইয়াসিন আদনানের পক্ষ থেকে শুভেচ্ছা🎉
       </div>
     </div>
 
     <script>
       // Auto-play audio immediately on load
-      const audio = document.getElementById("bgAudio");
-      audio.volume = 0.9;
-      audio.loop = true;
+const audio = document.getElementById(&#34;bgAudio&#34;);
+audio.volume = 0.9;
+audio.loop = true;
 
-      // Force play on page load
-      window.addEventListener('load', () => {
-        audio.play().catch(e => console.log("Autoplay blocked:", e));
-      });
+// Force play on page load
+window.addEventListener(&#39;load&#39;, () =&gt; {
+  audio.play().catch(e =&gt; console.log(&#34;Autoplay blocked:&#34;, e));
+});
 
-      // Also try to play immediately
-      audio.play().catch(e => {
-        // Fallback: play on any user interaction
-        const playAudio = () => {
-          audio.play();
-          document.removeEventListener('click', playAudio);
-          document.removeEventListener('keydown', playAudio);
-        };
-        document.addEventListener('click', playAudio);
-        document.addEventListener('keydown', playAudio);
-      });
+// Also try to play immediately
+audio.play().catch(e =&gt; {
+  // Fallback: play on any user interaction
+  const playAudio = () =&gt; {
+    audio.play();
+    document.removeEventListener(&#39;click&#39;, playAudio);
+    document.removeEventListener(&#39;keydown&#39;, playAudio);
+  };
+  document.addEventListener(&#39;click&#39;, playAudio);
+  document.addEventListener(&#39;keydown&#39;, playAudio);
+});
 
-      const canvas = document.getElementById("gl");
+const canvas = document.getElementById(&#34;gl&#34;);
 
-      // Click anywhere to restart the sound
-      canvas.addEventListener('click', () => {
-        audio.currentTime = 0;
-        audio.play();
-      });
+// Click anywhere to restart the sound
+canvas.addEventListener(&#39;click&#39;, () =&gt; {
+  audio.currentTime = 0;
+  audio.play();
+});
+const gl = canvas.getContext(&#34;webgl&#34;);
+if(!gl){ alert(&#34;WebGL not supported&#34;); }
 
-      const gl = canvas.getContext("webgl");
-      if(!gl){ alert("WebGL not supported"); }
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio,2);
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  gl.viewport(0,0,canvas.width,canvas.height);
+}
+resize();
+addEventListener(&#34;resize&#34;, resize);
 
-      function resize(){
-        const dpr = Math.min(window.devicePixelRatio,2);
-        canvas.width = innerWidth * dpr;
-        canvas.height = innerHeight * dpr;
-        gl.viewport(0,0,canvas.width,canvas.height);
-      }
-      resize();
-      addEventListener("resize", resize);
+function compile(src,type){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+      console.error(gl.getShaderInfoLog(s));
+  return s;
+}
 
-      function compile(src,type){
-        const s = gl.createShader(type);
-        gl.shaderSource(s, src);
-        gl.compileShader(s);
-        if(!gl.getShaderParameter(s, gl.COMPILE_STATUS))
-            console.error(gl.getShaderInfoLog(s));
-        return s;
-      }
+const vs = compile(`attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}`, gl.VERTEX_SHADER);
 
-      const vs = compile(
-        `attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}`,
-        gl.VERTEX_SHADER
-      );
-
-      const fs = compile(`
+const fs = compile(`
 precision highp float;
 
 uniform vec2 R;
@@ -150,7 +109,7 @@ uniform float lightI;
 
 float noise(vec3 p){
   float n=0.,a=0.6;
-  for(int i=0;i<4;i++){
+  for(int i=0;i&lt;4;i++){
     n+= (sin(p.x)+sin(p.y)+sin(p.z))*0.33*a;
     p*=1.8; a*=0.55;
   }
@@ -182,14 +141,14 @@ void main(){
   float t=0.,dt=0.25,md=20.,A=0.;
   vec3 C=vec3(0.);
 
-  for(int i=0;i<80;i++){
+  for(int i=0;i&lt;80;i++){
     vec3 p = ro + rd * t;
     float d = field(p);
     float ext = d*1.4;
 
     float lt = 1.0;
     vec3 lp = p;
-    for(int j=0;j<6;j++){
+    for(int j=0;j&lt;6;j++){
       lp += L*0.8;
       lt *= exp(-field(lp)*0.5);
     }
@@ -204,7 +163,7 @@ void main(){
     A += a;
 
     t += dt;
-    if(t > md || A > 0.99) break;
+    if(t &gt; md || A &gt; 0.99) break;
   }
 
   vec3 col = mix(sky, C + sky*0.25, A);
@@ -213,43 +172,43 @@ void main(){
 }
 `, gl.FRAGMENT_SHADER);
 
-      const prog = gl.createProgram();
-      gl.attachShader(prog,vs);
-      gl.attachShader(prog,fs);
-      gl.linkProgram(prog);
-      gl.useProgram(prog);
+const prog = gl.createProgram();
+gl.attachShader(prog,vs);
+gl.attachShader(prog,fs);
+gl.linkProgram(prog);
+gl.useProgram(prog);
 
-      const buf = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
 
-      const loc = {
-        p: gl.getAttribLocation(prog,"p"),
-        R: gl.getUniformLocation(prog,"R"),
-        T: gl.getUniformLocation(prog,"T"),
-        density: gl.getUniformLocation(prog,"density"),
-        scatter: gl.getUniformLocation(prog,"scatter"),
-        speed: gl.getUniformLocation(prog,"speed"),
-        lightI: gl.getUniformLocation(prog,"lightI")
-      };
+const loc = {
+  p: gl.getAttribLocation(prog,&#34;p&#34;),
+  R: gl.getUniformLocation(prog,&#34;R&#34;),
+  T: gl.getUniformLocation(prog,&#34;T&#34;),
+  density: gl.getUniformLocation(prog,&#34;density&#34;),
+  scatter: gl.getUniformLocation(prog,&#34;scatter&#34;),
+  speed: gl.getUniformLocation(prog,&#34;speed&#34;),
+  lightI: gl.getUniformLocation(prog,&#34;lightI&#34;)
+};
 
-      gl.enableVertexAttribArray(loc.p);
-      gl.vertexAttribPointer(loc.p,2,gl.FLOAT,false,0,0);
+gl.enableVertexAttribArray(loc.p);
+gl.vertexAttribPointer(loc.p,2,gl.FLOAT,false,0,0);
 
-      // MAXIMUM VALUES
-      gl.uniform1f(loc.density, 5.0);
-      gl.uniform1f(loc.scatter, 2.0);
-      gl.uniform1f(loc.speed, 2.0);
-      gl.uniform1f(loc.lightI, 5.0);
+// MAXIMUM VALUES
+gl.uniform1f(loc.density, 5.0);
+gl.uniform1f(loc.scatter, 2.0);
+gl.uniform1f(loc.speed, 2.0);
+gl.uniform1f(loc.lightI, 5.0);
 
-      let t0 = performance.now();
-      function draw(){
-        requestAnimationFrame(draw);
-        gl.uniform2f(loc.R, canvas.width, canvas.height);
-        gl.uniform1f(loc.T, (performance.now()-t0)/1000);
-        gl.drawArrays(gl.TRIANGLES,0,6);
-      }
-      draw();
+let t0 = performance.now();
+function draw(){
+  requestAnimationFrame(draw);
+  gl.uniform2f(loc.R, canvas.width, canvas.height);
+  gl.uniform1f(loc.T, (performance.now()-t0)/1000);
+  gl.drawArrays(gl.TRIANGLES,0,6);
+}
+draw();
     </script>
   </body>
 </html>
