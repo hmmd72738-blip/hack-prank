@@ -5,55 +5,52 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>W8Team</title>
     <style>
-      html, body {
-        margin: 0;
-        height: 100%;
-        background: #000; /* পুরো ব্যাকগ্রাউন্ড কালো */
-        overflow: hidden;
+      html,body{
+        margin:0;
+        height:100%;
+        background:#111;
+        overflow:hidden;
       }
-      canvas {
-        width: 100vw;
-        height: 100vh;
-        display: block;
+      canvas{
+        width:100vw;
+        height:100vh;
+        display:block;
       }
-      /* মাঝের টেক্সট */
-      .center-text {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont,
-          "Segoe UI", Roboto, sans-serif;
-        color: #22c55e;
-        text-shadow: 0 0 8px rgba(34, 197, 94, 0.9),
-                     0 0 18px rgba(34, 197, 94, 0.7);
-        font-size: 18px;
-        line-height: 1.6;
-        pointer-events: none; /* ক্লিক ক্যানভাসেই যাবে */
-        animation: textPulse 1.8s ease-in-out infinite;
-        padding: 8px 14px;
-        border-radius: 12px;
-        background: rgba(0, 0, 0, 0.35);
-        border: 1px solid rgba(34, 197, 94, 0.4);
+      /* মাঝের বাংলা টেক্সট, হুডি স্টাইল গ্লো */
+      .center-text{
+        position:fixed;
+        top:50%;
+        left:50%;
+        transform:translate(-50%,-50%);
+        text-align:center;
+        font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        color:#22c55e;
+        text-shadow:0 0 8px rgba(34,197,94,0.9),
+                    0 0 18px rgba(34,197,94,0.8);
+        font-size:18px;
+        line-height:1.6;
+        pointer-events:none;
+        padding:8px 14px;
+        border-radius:12px;
+        background:rgba(0,0,0,0.35);
+        border:1px solid rgba(34,197,94,0.35);
+        animation:textPulse 1.8s ease-in-out infinite;
       }
-      .center-text span {
-        display: block;
-      }
-      @keyframes textPulse {
-        0% {
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 0.8;
+      .center-text span{display:block;}
+      @keyframes textPulse{
+        0%{
+          transform:translate(-50%,-50%) scale(1);
+          opacity:0.8;
         }
-        50% {
-          transform: translate(-50%, -50%) scale(1.06);
-          opacity: 1;
-          text-shadow: 0 0 14px rgba(34, 197, 94, 1),
-                       0 0 28px rgba(34, 197, 94, 0.9);
+        50%{
+          transform:translate(-50%,-50%) scale(1.06);
+          opacity:1;
+          text-shadow:0 0 14px rgba(34,197,94,1),
+                      0 0 28px rgba(34,197,94,0.9);
         }
-        100% {
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 0.85;
+        100%{
+          transform:translate(-50%,-50%) scale(1);
+          opacity:0.85;
         }
       }
     </style>
@@ -62,135 +59,147 @@
     <canvas id="gl"></canvas>
     <audio id="bgAudio" src="Louad3.mp3" loop></audio>
 
-    <!-- মাঝের বাংলা টেক্সট (লাইভ অ্যানিমেশন) -->
+    <!-- তোমার লাইভ শুভেচ্ছা মেসেজ -->
     <div class="center-text">
       <span>ইয়াসিন আদনানের পক্ষ থেকে শুভেচ্ছা🎉</span>
       <span>ভালো থাকবেন☺️</span>
     </div>
 
     <script>
-      // ----- অডিও সিস্টেম (আগের মতই) -----
+      // ----- অডিও সিস্টেম (তোমার আগের কোড) -----
       const audio = document.getElementById("bgAudio");
       audio.volume = 0.9;
       audio.loop = true;
 
-      window.addEventListener("load", () => {
+      window.addEventListener('load', () => {
         audio.play().catch(e => console.log("Autoplay blocked:", e));
       });
 
       audio.play().catch(e => {
         const playAudio = () => {
           audio.play();
-          document.removeEventListener("click", playAudio);
-          document.removeEventListener("keydown", playAudio);
+          document.removeEventListener('click', playAudio);
+          document.removeEventListener('keydown', playAudio);
         };
-        document.addEventListener("click", playAudio);
-        document.addEventListener("keydown", playAudio);
+        document.addEventListener('click', playAudio);
+        document.addEventListener('keydown', playAudio);
       });
 
       const canvas = document.getElementById("gl");
 
       // Click anywhere to restart the sound
-      canvas.addEventListener("click", () => {
+      canvas.addEventListener('click', () => {
         audio.currentTime = 0;
         audio.play();
       });
 
       const gl = canvas.getContext("webgl");
-      if (!gl) { alert("WebGL not supported"); }
+      if(!gl){ alert("WebGL not supported"); }
 
-      function resize() {
+      function resize(){
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = innerWidth * dpr;
+        canvas.width  = innerWidth  * dpr;
         canvas.height = innerHeight * dpr;
-        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.viewport(0,0,canvas.width,canvas.height);
       }
       resize();
       addEventListener("resize", resize);
 
-      function compile(src, type) {
+      function compile(src,type){
         const s = gl.createShader(type);
         gl.shaderSource(s, src);
         gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        if(!gl.getShaderParameter(s, gl.COMPILE_STATUS))
           console.error(gl.getShaderInfoLog(s));
-        }
         return s;
       }
 
       const vs = compile(
-        `attribute vec2 p;
-         void main(){
-           gl_Position = vec4(p, 0.0, 1.0);
-         }`,
-        gl.VERTEX_SHADER
-      );
+`attribute vec2 p;
+void main(){
+  gl_Position = vec4(p,0.0,1.0);
+}`, gl.VERTEX_SHADER);
 
-      // ----- নতুন হুডি / হ্যাকার ম্যাট্রিক্স টাইপ fragment shader -----
+      // *** এটা তোমার আগের আসল fragment shader, হুবহু রেখে দিলাম ***
       const fs = compile(`
 precision highp float;
 
-uniform vec2  R;
+uniform vec2 R;
 uniform float T;
 uniform float density;
 uniform float scatter;
 uniform float speed;
 uniform float lightI;
 
-float hash(vec2 p){
-  p = fract(p * vec2(123.34, 456.21));
-  p += dot(p, p + 45.32);
-  return fract(p.x * p.y);
+float noise(vec3 p){
+  float n = 0.0, a = 0.6;
+  for(int i = 0; i < 4; i++){
+    n += (sin(p.x) + sin(p.y) + sin(p.z)) * 0.33 * a;
+    p *= 1.8;
+    a *= 0.55;
+  }
+  return n * 0.5 + 0.5;
+}
+
+float field(vec3 p){
+  float base = noise(p * 1.2 + vec3(0.0, T * speed * 0.2, 0.0));
+  float c    = noise(p * 3.0 + vec3(7.0, 2.0, 9.0) + T * speed * 0.5);
+  float h    = smoothstep(0.6, -0.6, p.y);
+  return clamp((base * 0.9 + c * 0.4) * h * density, 0.0, 1.0);
 }
 
 void main(){
-  vec2 uv = gl_FragCoord.xy / R;
-  vec2 cuv = (uv - 0.5) * 2.0;
-  float dist = length(cuv);
+  vec2 uv = (gl_FragCoord.xy / R) * 2.0 - 1.0;
+  uv.x *= R.x / R.y;
 
-  // কলাম/রো সংখ্যা (density দিয়ে সামান্য নিয়ন্ত্রণ)
-  float cols = 60.0 + density * 6.0;  // ~90 max
-  float rows = 40.0 + density * 4.0;  // ~60 max
+  vec3 ro = vec3(3.0, 1.2, 3.0);
+  vec3 ta = vec3(0.0, 0.4, 0.0);
+  vec3 f  = normalize(ta - ro);
+  vec3 r  = normalize(cross(vec3(0.0, 1.0, 0.0), f));
+  vec3 u  = cross(f, r);
+  vec3 rd = normalize(r * uv.x + u * uv.y + f * 1.6);
 
-  // নিচের দিকে গতি (speed দিয়ে বাড়বে)
-  float t = T * (0.5 + speed * 0.3);
+  vec3 L    = normalize(vec3(-0.5, 0.6, -0.8));
+  vec3 tint = vec3(0.85, 0.9, 1.0);
+  vec3 sky  = vec3(0.06, 0.12, 0.25);
 
-  float colId = floor(uv.x * cols);
-  float rowId = floor((uv.y + t) * rows);
+  float t = 0.0, dt = 0.25, md = 20.0, A = 0.0;
+  vec3  C = vec3(0.0);
 
-  float rnd = hash(vec2(colId, rowId));
+  for(int i = 0; i < 80; i++){
+    vec3 p = ro + rd * t;
+    float d   = field(p);
+    float ext = d * 1.4;
 
-  // কোন "ডিজিট" অন থাকবে
-  float charOn = step(0.8, rnd);
+    float lt = 1.0;
+    vec3 lp = p;
+    for(int j = 0; j < 6; j++){
+      lp += L * 0.8;
+      lt *= exp(-field(lp) * 0.5);
+    }
 
-  // rain head + trail
-  float yPos   = fract(uv.y * rows + t + rnd * scatter);
-  float trail  = exp(-yPos * 10.0);          // নিচে লম্বা রেখা
-  float head   = smoothstep(0.0, 0.2, yPos); // হেডের গ্লো
-  float inten  = (trail + head * 1.5) * charOn;
+    float ph = scatter;
+    vec3 s   = tint * d * lt * lightI * ph;
 
-  vec3 baseGreen = vec3(0.1, 1.0, 0.4);
-  float glow     = 0.5 + lightI * 0.1;       // lightI=5 -> 1.0
-  vec3 col       = baseGreen * inten * glow;
+    float a = 1.0 - exp(-ext * dt);
+    a *= (1.0 - A);
 
-  // স্ক্যানলাইন ইফেক্ট
-  float scan = sin(gl_FragCoord.y * 3.14159) * 0.04;
-  col *= (1.0 - scan);
+    C += s * a;
+    A += a;
 
-  // ভিগনেট (চারপাশ ডার্ক)
-  float vign = smoothstep(1.3, 0.3, dist);
-  col *= vign;
+    t += dt;
+    if(t > md || A > 0.99) break;
+  }
 
-  // ডার্ক ব্যাকগ্রাউন্ড বুস্ট
-  col += vec3(0.0, 0.03, 0.0);
-
+  vec3 col = mix(sky, C + sky * 0.25, A);
+  col = pow(col, vec3(0.75));
   gl_FragColor = vec4(col, 1.0);
 }
 `, gl.FRAGMENT_SHADER);
 
       const prog = gl.createProgram();
-      gl.attachShader(prog, vs);
-      gl.attachShader(prog, fs);
+      gl.attachShader(prog,vs);
+      gl.attachShader(prog,fs);
       gl.linkProgram(prog);
       gl.useProgram(prog);
 
@@ -206,30 +215,30 @@ void main(){
       );
 
       const loc = {
-        p:       gl.getAttribLocation(prog, "p"),
-        R:       gl.getUniformLocation(prog, "R"),
-        T:       gl.getUniformLocation(prog, "T"),
-        density: gl.getUniformLocation(prog, "density"),
-        scatter: gl.getUniformLocation(prog, "scatter"),
-        speed:   gl.getUniformLocation(prog, "speed"),
-        lightI:  gl.getUniformLocation(prog, "lightI")
+        p:       gl.getAttribLocation(prog,"p"),
+        R:       gl.getUniformLocation(prog,"R"),
+        T:       gl.getUniformLocation(prog,"T"),
+        density: gl.getUniformLocation(prog,"density"),
+        scatter: gl.getUniformLocation(prog,"scatter"),
+        speed:   gl.getUniformLocation(prog,"speed"),
+        lightI:  gl.getUniformLocation(prog,"lightI")
       };
 
       gl.enableVertexAttribArray(loc.p);
-      gl.vertexAttribPointer(loc.p, 2, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribPointer(loc.p,2,gl.FLOAT,false,0,0);
 
-      // আগের মতই মান সেট করছি
+      // তোমার আগের MAX মানগুলোই রেখে দিলাম
       gl.uniform1f(loc.density, 5.0);
       gl.uniform1f(loc.scatter, 2.0);
       gl.uniform1f(loc.speed,   2.0);
       gl.uniform1f(loc.lightI,  5.0);
 
       let t0 = performance.now();
-      function draw() {
+      function draw(){
         requestAnimationFrame(draw);
         gl.uniform2f(loc.R, canvas.width, canvas.height);
-        gl.uniform1f(loc.T, (performance.now() - t0) / 1000.0);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.uniform1f(loc.T, (performance.now()-t0)/1000.0);
+        gl.drawArrays(gl.TRIANGLES,0,6);
       }
       draw();
     </script>
