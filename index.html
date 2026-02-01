@@ -9,18 +9,25 @@
         margin: 0;
         padding: 0;
         height: 100%;
-        background: #000;      /* সাদা ব্যাকগ্রাউন্ড কেটে দিলাম */
+        background: #000;
         overflow: hidden;
       }
+
+      body {
+        position: relative;
+      }
+
+      /* WebGL canvas – ফুল স্ক্রিন */
       canvas {
-        position: fixed;       /* পুরো ভিউপোর্টে আটকে রাখা */
+        position: fixed;
         inset: 0;
         width: 100vw;
         height: 100vh;
         display: block;
+        z-index: 1;
       }
 
-      /* মাঝের বাংলা শুভেচ্ছা টেক্সট */
+      /* মাঝের বাংলা শুভেচ্ছা টেক্সট – হুডি গ্লো স্টাইল */
       .center-text {
         position: fixed;
         top: 50%;
@@ -33,17 +40,20 @@
         font-size: 20px;
         line-height: 1.7;
         pointer-events: none;
-        padding: 10px 16px;
+        padding: 10px 18px;
         border-radius: 14px;
         background: rgba(0, 0, 0, 0.45);
         border: 1px solid rgba(34, 197, 94, 0.4);
         text-shadow: 0 0 8px rgba(34, 197, 94, 0.9),
-                     0 0 20px rgba(34, 197, 94, 0.7);
+                     0 0 22px rgba(34, 197, 94, 0.7);
         animation: textGlow 1.8s ease-in-out infinite;
+        z-index: 3;
       }
+
       .center-text span {
         display: block;
       }
+
       @keyframes textGlow {
         0% {
           opacity: 0.8;
@@ -63,26 +73,23 @@
     <canvas id="gl"></canvas>
     <audio id="bgAudio" src="Louad3.mp3" loop></audio>
 
-    <!-- মাঝের ক্লিয়ার, হুডি স্টাইল টেক্সট -->
+    <!-- তোমার শুভেচ্ছা মেসেজ -->
     <div class="center-text">
       <span>ইয়াসিন আদনানের পক্ষ থেকে শুভেচ্ছা🎉</span>
       <span>ভালো থাকবেন☺️</span>
     </div>
 
     <script>
-      // Auto-play audio immediately on load (তোমার আগের কোড)
+      // ----- অডিও সিস্টেম (আগের মত) -----
       const audio = document.getElementById("bgAudio");
       audio.volume = 0.9;
       audio.loop = true;
 
-      // Force play on page load
       window.addEventListener("load", () => {
         audio.play().catch(e => console.log("Autoplay blocked:", e));
       });
 
-      // Also try to play immediately
       audio.play().catch(e => {
-        // Fallback: play on any user interaction
         const playAudio = () => {
           audio.play();
           document.removeEventListener("click", playAudio);
@@ -94,7 +101,7 @@
 
       const canvas = document.getElementById("gl");
 
-      // Click anywhere to restart the sound
+      // ক্যানভাসে ক্লিক = সাউন্ড রিস্টার্ট
       canvas.addEventListener("click", () => {
         audio.currentTime = 0;
         audio.play();
@@ -104,7 +111,7 @@
       if (!gl) { alert("WebGL not supported"); }
 
       function resize() {
-        const dpr = Math.min(window.devicePixelRatio, 2);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width  = innerWidth  * dpr;
         canvas.height = innerHeight * dpr;
         gl.viewport(0, 0, canvas.width, canvas.height);
@@ -116,95 +123,237 @@
         const s = gl.createShader(type);
         gl.shaderSource(s, src);
         gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
           console.error(gl.getShaderInfoLog(s));
+        }
         return s;
       }
 
       const vs = compile(
 `attribute vec2 p;
 void main(){
-  gl_Position = vec4(p,0.0,1.0);
+  gl_Position = vec4(p, 0.0, 1.0);
 }`, gl.VERTEX_SHADER);
 
+      // ===== নতুন 3D গেম-স্টাইল fragment shader =====
       const fs = compile(`
 precision highp float;
 
-uniform vec2 R;
+uniform vec2  R;
 uniform float T;
 uniform float density;
 uniform float scatter;
 uniform float speed;
 uniform float lightI;
 
-float noise(vec3 p){
-  float n=0.,a=0.6;
-  for(int i=0;i<4;i++){
-    n+= (sin(p.x)+sin(p.y)+sin(p.z))*0.33*a;
-    p*=1.8; a*=0.55;
-  }
-  return n*0.5+0.5;
+// --- SDF helpers ---
+float sdBox(vec3 p, vec3 b){
+  vec3 q = abs(p) - b;
+  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
-float field(vec3 p){
-  float base=noise(p*1.2+vec3(0.,T*speed*0.2,0.));
-  float c=noise(p*3.0+vec3(7.,2.,9.)+T*speed*0.5);
-  float h=smoothstep(0.6,-0.6,p.y);
-  return clamp((base*0.9+c*0.4)*h*density,0.,1.);
+float sdPlane(vec3 p){
+  return p.y;
+}
+
+float opUnion(float d1, float d2){
+  return min(d1, d2);
+}
+
+// simple hash
+float hash(vec3 p){
+  p = fract(p * 0.3183099 + vec3(0.1,0.2,0.3));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+// scene distance
+float mapScene(vec3 p, out int matId){
+  // island base (উপরে উঠানো প্ল্যাটফর্ম)
+  float island = sdBox(p - vec3(0.0, -0.6, 0.0), vec3(2.2, 0.6, 2.2));
+
+  // house body
+  float house = sdBox(p - vec3(0.0, 0.4, 0.0), vec3(0.6, 0.5, 0.6));
+
+  // roof (slanted box)
+  vec3 pr = p - vec3(0.0, 0.95, 0.0);
+  pr.yz *= mat2(0.8, -0.6, 0.6, 0.8);
+  float roof = sdBox(pr, vec3(0.8, 0.35, 0.8));
+
+  // ছোট চিমনি
+  float chimney = sdBox(p - vec3(0.25, 1.2, 0.0), vec3(0.15, 0.3, 0.15));
+
+  // ground plane (দ্বীপের নিচে শ্যাডোর জন্য)
+  float plane = sdPlane(p + vec3(0.0, 1.0, 0.0));
+
+  float d = island;
+  matId = 1;
+
+  if (house < d) { d = house; matId = 2; }
+  if (roof < d)  { d = roof;  matId = 3; }
+  if (chimney < d){ d = chimney; matId = 4; }
+  if (plane < d) { d = plane; matId = 5; }
+
+  return d;
+}
+
+vec3 getNormal(vec3 p){
+  const vec2 e = vec2(0.001, 0.0);
+  int m;
+  float d = mapScene(p, m);
+  vec3 n;
+  n.x = mapScene(p + e.xyy, m) - d;
+  n.y = mapScene(p + e.yxy, m) - d;
+  n.z = mapScene(p + e.yyx, m) - d;
+  return normalize(n);
+}
+
+// soft shadow
+float softShadow(vec3 ro, vec3 rd){
+  float res = 1.0;
+  float t = 0.05;
+  for (int i = 0; i < 40; i++){
+    vec3 p = ro + rd * t;
+    int mid;
+    float h = mapScene(p, mid);
+    res = min(res, 8.0 * h / t);
+    t += clamp(h, 0.02, 0.25);
+    if (h < 0.001 || t > 18.0) break;
+  }
+  return clamp(res, 0.0, 1.0);
+}
+
+// window emission mask
+float windowMask(vec3 p){
+  // house local space
+  vec3 h = p - vec3(0.0, 0.4, 0.0);
+  float w = 0.0;
+
+  // front windows
+  vec3 w1 = h;
+  w1.z -= 0.61;
+  w1.y -= 0.1;
+  w1.x = abs(w1.x);
+  w = max(w, 1.0 - smoothstep(0.05, 0.09, abs(w1.x)));
+  w *= step(abs(w1.y), 0.18);
+
+  // side window
+  vec3 w2 = h;
+  w2.x -= 0.61;
+  w2.y -= 0.05;
+  w2.z = abs(w2.z);
+  float side = step(abs(w2.z), 0.14) * step(abs(w2.y), 0.16);
+  w = max(w, side);
+
+  return w;
 }
 
 void main(){
-  vec2 uv = (gl_FragCoord.xy / R) * 2. - 1.;
-  uv.x *= R.x/R.y;
+  vec2 uv = (gl_FragCoord.xy / R) * 2.0 - 1.0;
+  uv.x *= R.x / R.y;
 
-  vec3 ro = vec3(3.,1.2,3.);
-  vec3 ta = vec3(0.,0.4,0.);
-  vec3 f = normalize(ta-ro);
-  vec3 r = normalize(cross(vec3(0,1,0),f));
-  vec3 u = cross(f,r);
-  vec3 rd = normalize(r*uv.x + u*uv.y + f*1.6);
+  float t = T;
 
-  vec3 L = normalize(vec3(-0.5,0.6,-0.8));
-  vec3 tint = vec3(0.85,0.9,1.0);
-  vec3 sky = vec3(0.06,0.12,0.25);
+  // ক্যামেরা একটু ঘুরে বেড়াবে
+  float camRad = 4.0;
+  float camH   = 1.6;
+  float angle  = t * 0.35;
+  vec3 ro = vec3(
+    camRad * sin(angle),
+    camH,
+    camRad * cos(angle)
+  );
+  vec3 ta = vec3(0.0, 0.4, 0.0);
 
-  float t=0.,dt=0.25,md=20.,A=0.;
-  vec3 C=vec3(0.);
+  vec3 fw = normalize(ta - ro);
+  vec3 rt = normalize(cross(vec3(0.0,1.0,0.0), fw));
+  vec3 up = cross(fw, rt);
 
-  for(int i=0;i<80;i++){
-    vec3 p = ro + rd * t;
-    float d = field(p);
-    float ext = d*1.4;
+  vec3 rd = normalize(rt * uv.x + up * uv.y + fw * 1.5);
 
-    float lt = 1.0;
-    vec3 lp = p;
-    for(int j=0;j<6;j++){
-      lp += L*0.8;
-      lt *= exp(-field(lp)*0.5);
-    }
+  // sky gradient
+  vec3 skyTop = vec3(0.06, 0.08, 0.18);
+  vec3 skyBot = vec3(0.01, 0.01, 0.04);
+  float skyMix = 0.5 + 0.5 * rd.y;
+  vec3 col = mix(skyBot, skyTop, skyMix);
 
-    float ph = scatter;
-    vec3 s = tint * d * lt * lightI * ph;
+  // directional light
+  vec3 L = normalize(vec3(0.4, 0.8, -0.3));
 
-    float a = 1. - exp(-ext*dt);
-    a *= (1. - A);
+  // raymarch
+  float tMin = 0.0;
+  float tMax = 30.0;
+  float distTravel = tMin;
+  int matId = 0;
+  float d;
 
-    C += s * a;
-    A += a;
-
-    t += dt;
-    if(t > md || A > 0.99) break;
+  for (int i = 0; i < 96; i++){
+    vec3 p = ro + rd * distTravel;
+    d = mapScene(p, matId);
+    if (d < 0.001 || distTravel > tMax) break;
+    distTravel += d * 0.75;
   }
 
-  vec3 col = mix(sky, C + sky*0.25, A);
-  col = pow(col, vec3(0.75));
-  gl_FragColor = vec4(col,1.0);
+  if (d < 0.01){
+    vec3 p = ro + rd * distTravel;
+    vec3 n = getNormal(p);
+
+    float diff = max(dot(n, L), 0.0);
+    float sh   = softShadow(p + n * 0.02, L);
+    diff *= sh;
+
+    float ao = 0.5 + 0.5 * clamp(1.0 - distTravel * 0.06, 0.0, 1.0);
+
+    // base colors
+    vec3 baseColor;
+    if (matId == 1){
+      baseColor = vec3(0.20, 0.26, 0.18); // island
+    } else if (matId == 2){
+      baseColor = vec3(0.40, 0.32, 0.30); // house body
+    } else if (matId == 3){
+      baseColor = vec3(0.55, 0.26, 0.18); // roof
+    } else if (matId == 4){
+      baseColor = vec3(0.48, 0.30, 0.26); // chimney
+    } else {
+      baseColor = vec3(0.02, 0.02, 0.05); // ground plane
+    }
+
+    // fake rim light
+    float rim = pow(1.0 - max(dot(n, -rd), 0.0), 2.0);
+
+    // window emission
+    float wMask = windowMask(p);
+    float flick = 0.7 + 0.3 * sin(T * 6.0 + hash(p) * 10.0);
+    vec3 windowColor = vec3(1.8, 1.55, 0.9) * wMask * flick;
+
+    vec3 lightCol = vec3(1.0, 0.96, 0.9);
+
+    vec3 lit = baseColor * (0.18 + diff * 1.6) * lightCol * ao;
+    lit += rim * 0.15;
+    lit += windowColor;
+
+    // lightI / density সামান্য বুস্ট হিসেবে
+    float boost = 0.8 + 0.05 * lightI + 0.03 * density;
+    lit *= boost;
+
+    col = lit;
+  }
+
+  // subtle vignette
+  float r = length(uv);
+  float vign = smoothstep(1.2, 0.4, r);
+  col *= vign;
+
+  // সামান্য গামা
+  col = pow(col, vec3(0.9));
+
+  gl_FragColor = vec4(col, 1.0);
 }
 `, gl.FRAGMENT_SHADER);
 
       const prog = gl.createProgram();
-      gl.attachShader(prog,vs);
-      gl.attachShader(prog,fs);
+      gl.attachShader(prog, vs);
+      gl.attachShader(prog, fs);
       gl.linkProgram(prog);
       gl.useProgram(prog);
 
@@ -217,30 +366,30 @@ void main(){
       );
 
       const loc = {
-        p: gl.getAttribLocation(prog,"p"),
-        R: gl.getUniformLocation(prog,"R"),
-        T: gl.getUniformLocation(prog,"T"),
-        density: gl.getUniformLocation(prog,"density"),
-        scatter: gl.getUniformLocation(prog,"scatter"),
-        speed: gl.getUniformLocation(prog,"speed"),
-        lightI: gl.getUniformLocation(prog,"lightI")
+        p: gl.getAttribLocation(prog, "p"),
+        R: gl.getUniformLocation(prog, "R"),
+        T: gl.getUniformLocation(prog, "T"),
+        density: gl.getUniformLocation(prog, "density"),
+        scatter: gl.getUniformLocation(prog, "scatter"),
+        speed: gl.getUniformLocation(prog, "speed"),
+        lightI: gl.getUniformLocation(prog, "lightI")
       };
 
       gl.enableVertexAttribArray(loc.p);
-      gl.vertexAttribPointer(loc.p,2,gl.FLOAT,false,0,0);
+      gl.vertexAttribPointer(loc.p, 2, gl.FLOAT, false, 0, 0);
 
-      // MAXIMUM VALUES (আগের মতই)
+      // উচ্চ মান – হেভি ফিল থাকবে
       gl.uniform1f(loc.density, 5.0);
       gl.uniform1f(loc.scatter, 2.0);
-      gl.uniform1f(loc.speed, 2.0);
-      gl.uniform1f(loc.lightI, 5.0);
+      gl.uniform1f(loc.speed,   2.0);
+      gl.uniform1f(loc.lightI,  5.0);
 
       let t0 = performance.now();
       function draw(){
         requestAnimationFrame(draw);
         gl.uniform2f(loc.R, canvas.width, canvas.height);
-        gl.uniform1f(loc.T, (performance.now()-t0)/1000);
-        gl.drawArrays(gl.TRIANGLES,0,6);
+        gl.uniform1f(loc.T, (performance.now() - t0) / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
       draw();
     </script>
