@@ -5,52 +5,56 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>W8Team</title>
     <style>
-      html,body{
-        margin:0;
-        height:100%;
-        background:#111;
-        overflow:hidden;
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;      /* সাদা ব্যাকগ্রাউন্ড কেটে দিলাম */
+        overflow: hidden;
       }
-      canvas{
-        width:100vw;
-        height:100vh;
-        display:block;
+      canvas {
+        position: fixed;       /* পুরো ভিউপোর্টে আটকে রাখা */
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
       }
-      /* মাঝের বাংলা টেক্সট, হুডি স্টাইল গ্লো */
-      .center-text{
-        position:fixed;
-        top:50%;
-        left:50%;
-        transform:translate(-50%,-50%);
-        text-align:center;
-        font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-        color:#22c55e;
-        text-shadow:0 0 8px rgba(34,197,94,0.9),
-                    0 0 18px rgba(34,197,94,0.8);
-        font-size:18px;
-        line-height:1.6;
-        pointer-events:none;
-        padding:8px 14px;
-        border-radius:12px;
-        background:rgba(0,0,0,0.35);
-        border:1px solid rgba(34,197,94,0.35);
-        animation:textPulse 1.8s ease-in-out infinite;
+
+      /* মাঝের বাংলা শুভেচ্ছা টেক্সট */
+      .center-text {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, sans-serif;
+        color: #22c55e;
+        font-size: 20px;
+        line-height: 1.7;
+        pointer-events: none;
+        padding: 10px 16px;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(34, 197, 94, 0.4);
+        text-shadow: 0 0 8px rgba(34, 197, 94, 0.9),
+                     0 0 20px rgba(34, 197, 94, 0.7);
+        animation: textGlow 1.8s ease-in-out infinite;
       }
-      .center-text span{display:block;}
-      @keyframes textPulse{
-        0%{
-          transform:translate(-50%,-50%) scale(1);
-          opacity:0.8;
+      .center-text span {
+        display: block;
+      }
+      @keyframes textGlow {
+        0% {
+          opacity: 0.8;
         }
-        50%{
-          transform:translate(-50%,-50%) scale(1.06);
-          opacity:1;
-          text-shadow:0 0 14px rgba(34,197,94,1),
-                      0 0 28px rgba(34,197,94,0.9);
+        50% {
+          opacity: 1;
+          text-shadow: 0 0 14px rgba(34, 197, 94, 1),
+                       0 0 30px rgba(34, 197, 94, 0.9);
         }
-        100%{
-          transform:translate(-50%,-50%) scale(1);
-          opacity:0.85;
+        100% {
+          opacity: 0.85;
         }
       }
     </style>
@@ -59,57 +63,60 @@
     <canvas id="gl"></canvas>
     <audio id="bgAudio" src="Louad3.mp3" loop></audio>
 
-    <!-- তোমার লাইভ শুভেচ্ছা মেসেজ -->
+    <!-- মাঝের ক্লিয়ার, হুডি স্টাইল টেক্সট -->
     <div class="center-text">
       <span>ইয়াসিন আদনানের পক্ষ থেকে শুভেচ্ছা🎉</span>
       <span>ভালো থাকবেন☺️</span>
     </div>
 
     <script>
-      // ----- অডিও সিস্টেম (তোমার আগের কোড) -----
+      // Auto-play audio immediately on load (তোমার আগের কোড)
       const audio = document.getElementById("bgAudio");
       audio.volume = 0.9;
       audio.loop = true;
 
-      window.addEventListener('load', () => {
+      // Force play on page load
+      window.addEventListener("load", () => {
         audio.play().catch(e => console.log("Autoplay blocked:", e));
       });
 
+      // Also try to play immediately
       audio.play().catch(e => {
+        // Fallback: play on any user interaction
         const playAudio = () => {
           audio.play();
-          document.removeEventListener('click', playAudio);
-          document.removeEventListener('keydown', playAudio);
+          document.removeEventListener("click", playAudio);
+          document.removeEventListener("keydown", playAudio);
         };
-        document.addEventListener('click', playAudio);
-        document.addEventListener('keydown', playAudio);
+        document.addEventListener("click", playAudio);
+        document.addEventListener("keydown", playAudio);
       });
 
       const canvas = document.getElementById("gl");
 
       // Click anywhere to restart the sound
-      canvas.addEventListener('click', () => {
+      canvas.addEventListener("click", () => {
         audio.currentTime = 0;
         audio.play();
       });
 
       const gl = canvas.getContext("webgl");
-      if(!gl){ alert("WebGL not supported"); }
+      if (!gl) { alert("WebGL not supported"); }
 
-      function resize(){
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio, 2);
         canvas.width  = innerWidth  * dpr;
         canvas.height = innerHeight * dpr;
-        gl.viewport(0,0,canvas.width,canvas.height);
+        gl.viewport(0, 0, canvas.width, canvas.height);
       }
       resize();
       addEventListener("resize", resize);
 
-      function compile(src,type){
+      function compile(src, type) {
         const s = gl.createShader(type);
         gl.shaderSource(s, src);
         gl.compileShader(s);
-        if(!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
           console.error(gl.getShaderInfoLog(s));
         return s;
       }
@@ -120,7 +127,6 @@ void main(){
   gl_Position = vec4(p,0.0,1.0);
 }`, gl.VERTEX_SHADER);
 
-      // *** এটা তোমার আগের আসল fragment shader, হুবহু রেখে দিলাম ***
       const fs = compile(`
 precision highp float;
 
@@ -132,57 +138,56 @@ uniform float speed;
 uniform float lightI;
 
 float noise(vec3 p){
-  float n = 0.0, a = 0.6;
-  for(int i = 0; i < 4; i++){
-    n += (sin(p.x) + sin(p.y) + sin(p.z)) * 0.33 * a;
-    p *= 1.8;
-    a *= 0.55;
+  float n=0.,a=0.6;
+  for(int i=0;i<4;i++){
+    n+= (sin(p.x)+sin(p.y)+sin(p.z))*0.33*a;
+    p*=1.8; a*=0.55;
   }
-  return n * 0.5 + 0.5;
+  return n*0.5+0.5;
 }
 
 float field(vec3 p){
-  float base = noise(p * 1.2 + vec3(0.0, T * speed * 0.2, 0.0));
-  float c    = noise(p * 3.0 + vec3(7.0, 2.0, 9.0) + T * speed * 0.5);
-  float h    = smoothstep(0.6, -0.6, p.y);
-  return clamp((base * 0.9 + c * 0.4) * h * density, 0.0, 1.0);
+  float base=noise(p*1.2+vec3(0.,T*speed*0.2,0.));
+  float c=noise(p*3.0+vec3(7.,2.,9.)+T*speed*0.5);
+  float h=smoothstep(0.6,-0.6,p.y);
+  return clamp((base*0.9+c*0.4)*h*density,0.,1.);
 }
 
 void main(){
-  vec2 uv = (gl_FragCoord.xy / R) * 2.0 - 1.0;
-  uv.x *= R.x / R.y;
+  vec2 uv = (gl_FragCoord.xy / R) * 2. - 1.;
+  uv.x *= R.x/R.y;
 
-  vec3 ro = vec3(3.0, 1.2, 3.0);
-  vec3 ta = vec3(0.0, 0.4, 0.0);
-  vec3 f  = normalize(ta - ro);
-  vec3 r  = normalize(cross(vec3(0.0, 1.0, 0.0), f));
-  vec3 u  = cross(f, r);
-  vec3 rd = normalize(r * uv.x + u * uv.y + f * 1.6);
+  vec3 ro = vec3(3.,1.2,3.);
+  vec3 ta = vec3(0.,0.4,0.);
+  vec3 f = normalize(ta-ro);
+  vec3 r = normalize(cross(vec3(0,1,0),f));
+  vec3 u = cross(f,r);
+  vec3 rd = normalize(r*uv.x + u*uv.y + f*1.6);
 
-  vec3 L    = normalize(vec3(-0.5, 0.6, -0.8));
-  vec3 tint = vec3(0.85, 0.9, 1.0);
-  vec3 sky  = vec3(0.06, 0.12, 0.25);
+  vec3 L = normalize(vec3(-0.5,0.6,-0.8));
+  vec3 tint = vec3(0.85,0.9,1.0);
+  vec3 sky = vec3(0.06,0.12,0.25);
 
-  float t = 0.0, dt = 0.25, md = 20.0, A = 0.0;
-  vec3  C = vec3(0.0);
+  float t=0.,dt=0.25,md=20.,A=0.;
+  vec3 C=vec3(0.);
 
-  for(int i = 0; i < 80; i++){
+  for(int i=0;i<80;i++){
     vec3 p = ro + rd * t;
-    float d   = field(p);
-    float ext = d * 1.4;
+    float d = field(p);
+    float ext = d*1.4;
 
     float lt = 1.0;
     vec3 lp = p;
-    for(int j = 0; j < 6; j++){
-      lp += L * 0.8;
-      lt *= exp(-field(lp) * 0.5);
+    for(int j=0;j<6;j++){
+      lp += L*0.8;
+      lt *= exp(-field(lp)*0.5);
     }
 
     float ph = scatter;
-    vec3 s   = tint * d * lt * lightI * ph;
+    vec3 s = tint * d * lt * lightI * ph;
 
-    float a = 1.0 - exp(-ext * dt);
-    a *= (1.0 - A);
+    float a = 1. - exp(-ext*dt);
+    a *= (1. - A);
 
     C += s * a;
     A += a;
@@ -191,9 +196,9 @@ void main(){
     if(t > md || A > 0.99) break;
   }
 
-  vec3 col = mix(sky, C + sky * 0.25, A);
+  vec3 col = mix(sky, C + sky*0.25, A);
   col = pow(col, vec3(0.75));
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(col,1.0);
 }
 `, gl.FRAGMENT_SHADER);
 
@@ -207,37 +212,34 @@ void main(){
       gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.bufferData(
         gl.ARRAY_BUFFER,
-        new Float32Array([
-          -1,-1,  1,-1, -1, 1,
-          -1, 1,  1,-1,  1, 1
-        ]),
+        new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]),
         gl.STATIC_DRAW
       );
 
       const loc = {
-        p:       gl.getAttribLocation(prog,"p"),
-        R:       gl.getUniformLocation(prog,"R"),
-        T:       gl.getUniformLocation(prog,"T"),
+        p: gl.getAttribLocation(prog,"p"),
+        R: gl.getUniformLocation(prog,"R"),
+        T: gl.getUniformLocation(prog,"T"),
         density: gl.getUniformLocation(prog,"density"),
         scatter: gl.getUniformLocation(prog,"scatter"),
-        speed:   gl.getUniformLocation(prog,"speed"),
-        lightI:  gl.getUniformLocation(prog,"lightI")
+        speed: gl.getUniformLocation(prog,"speed"),
+        lightI: gl.getUniformLocation(prog,"lightI")
       };
 
       gl.enableVertexAttribArray(loc.p);
       gl.vertexAttribPointer(loc.p,2,gl.FLOAT,false,0,0);
 
-      // তোমার আগের MAX মানগুলোই রেখে দিলাম
+      // MAXIMUM VALUES (আগের মতই)
       gl.uniform1f(loc.density, 5.0);
       gl.uniform1f(loc.scatter, 2.0);
-      gl.uniform1f(loc.speed,   2.0);
-      gl.uniform1f(loc.lightI,  5.0);
+      gl.uniform1f(loc.speed, 2.0);
+      gl.uniform1f(loc.lightI, 5.0);
 
       let t0 = performance.now();
       function draw(){
         requestAnimationFrame(draw);
         gl.uniform2f(loc.R, canvas.width, canvas.height);
-        gl.uniform1f(loc.T, (performance.now()-t0)/1000.0);
+        gl.uniform1f(loc.T, (performance.now()-t0)/1000);
         gl.drawArrays(gl.TRIANGLES,0,6);
       }
       draw();
