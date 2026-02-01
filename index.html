@@ -8,7 +8,7 @@
       html, body {
         margin: 0;
         height: 100%;
-        background: #000; /* পিওর ব্ল্যাক ব্যাকগ্রাউন্ড */
+        background: #000; /* পুরো ব্যাকগ্রাউন্ড কালো */
         overflow: hidden;
       }
       canvas {
@@ -16,26 +16,69 @@
         height: 100vh;
         display: block;
       }
+      /* মাঝের টেক্সট */
+      .center-text {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, sans-serif;
+        color: #22c55e;
+        text-shadow: 0 0 8px rgba(34, 197, 94, 0.9),
+                     0 0 18px rgba(34, 197, 94, 0.7);
+        font-size: 18px;
+        line-height: 1.6;
+        pointer-events: none; /* ক্লিক ক্যানভাসেই যাবে */
+        animation: textPulse 1.8s ease-in-out infinite;
+        padding: 8px 14px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(34, 197, 94, 0.4);
+      }
+      .center-text span {
+        display: block;
+      }
+      @keyframes textPulse {
+        0% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 0.8;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.06);
+          opacity: 1;
+          text-shadow: 0 0 14px rgba(34, 197, 94, 1),
+                       0 0 28px rgba(34, 197, 94, 0.9);
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 0.85;
+        }
+      }
     </style>
   </head>
   <body>
     <canvas id="gl"></canvas>
     <audio id="bgAudio" src="Louad3.mp3" loop></audio>
 
+    <!-- মাঝের বাংলা টেক্সট (লাইভ অ্যানিমেশন) -->
+    <div class="center-text">
+      <span>ইয়াসিন আদনানের পক্ষ থেকে শুভেচ্ছা🎉</span>
+      <span>ভালো থাকবেন☺️</span>
+    </div>
+
     <script>
-      // Auto-play audio (যতটা ব্রাউজার অনুমতি দেয়)
+      // ----- অডিও সিস্টেম (আগের মতই) -----
       const audio = document.getElementById("bgAudio");
       audio.volume = 0.9;
       audio.loop = true;
 
-      // Force play on page load
       window.addEventListener("load", () => {
         audio.play().catch(e => console.log("Autoplay blocked:", e));
       });
 
-      // Also try to play immediately
       audio.play().catch(e => {
-        // Fallback: play on any user interaction
         const playAudio = () => {
           audio.play();
           document.removeEventListener("click", playAudio);
@@ -83,7 +126,7 @@
         gl.VERTEX_SHADER
       );
 
-      // নতুন হ্যাকার / ম্যাট্রিক্স টাইপ fragment shader
+      // ----- নতুন হুডি / হ্যাকার ম্যাট্রিক্স টাইপ fragment shader -----
       const fs = compile(`
 precision highp float;
 
@@ -101,53 +144,45 @@ float hash(vec2 p){
 }
 
 void main(){
-  // 0–1 UV
   vec2 uv = gl_FragCoord.xy / R;
-  // Center UV for vignette
   vec2 cuv = (uv - 0.5) * 2.0;
   float dist = length(cuv);
 
-  // কলাম / রো সংখ্যা (density দিয়ে একটু কন্ট্রোল)
-  float cols = 60.0 + density * 6.0;  // 60–90
-  float rows = 40.0 + density * 4.0;  // 40–60
+  // কলাম/রো সংখ্যা (density দিয়ে সামান্য নিয়ন্ত্রণ)
+  float cols = 60.0 + density * 6.0;  // ~90 max
+  float rows = 40.0 + density * 4.0;  // ~60 max
 
-  // downwards speed (speed দিয়ে কন্ট্রোল)
-  float t = T * (0.7 + speed * 0.2);
+  // নিচের দিকে গতি (speed দিয়ে বাড়বে)
+  float t = T * (0.5 + speed * 0.3);
 
-  // এই পিক্সেল কোন কলাম / রো তে
-  float column = floor(uv.x * cols);
-  float row    = floor((uv.y + t) * rows);
+  float colId = floor(uv.x * cols);
+  float rowId = floor((uv.y + t) * rows);
 
-  // র‍্যান্ডম চিহ্ন অন/অফ
-  float base = hash(vec2(column, row));
+  float rnd = hash(vec2(colId, rowId));
 
-  // রেইন ট্রেইল ইফেক্ট
-  float yPos  = fract(uv.y * rows + t);
-  float trail = exp(-yPos * 10.0);          // নিচের দিকে ট্রেইল
-  float head  = smoothstep(0.0, 0.15, yPos) * 0.9; // হেড অংশ
+  // কোন "ডিজিট" অন থাকবে
+  float charOn = step(0.8, rnd);
 
-  // কিছু পিক্সেলই শুধু অন
-  float charOn = step(0.8, base);
+  // rain head + trail
+  float yPos   = fract(uv.y * rows + t + rnd * scatter);
+  float trail  = exp(-yPos * 10.0);          // নিচে লম্বা রেখা
+  float head   = smoothstep(0.0, 0.2, yPos); // হেডের গ্লো
+  float inten  = (trail + head * 1.5) * charOn;
 
-  float intensity = (trail + head) * charOn;
+  vec3 baseGreen = vec3(0.1, 1.0, 0.4);
+  float glow     = 0.5 + lightI * 0.1;       // lightI=5 -> 1.0
+  vec3 col       = baseGreen * inten * glow;
 
-  // lightI দিয়ে গ্লো কিছুটা বাড়ানো/কমানো
-  float glow = 0.4 + lightI * 0.08; // lightI=5 -> ~0.8
-  vec3 green = vec3(0.1, 1.0, 0.3);
-  vec3 col   = vec3(0.0);
+  // স্ক্যানলাইন ইফেক্ট
+  float scan = sin(gl_FragCoord.y * 3.14159) * 0.04;
+  col *= (1.0 - scan);
 
-  col += green * intensity * glow;
+  // ভিগনেট (চারপাশ ডার্ক)
+  float vign = smoothstep(1.3, 0.3, dist);
+  col *= vign;
 
-  // subtle scan-line effect
-  float line = sin(gl_FragCoord.y * 3.14159) * 0.04;
-  col *= (1.0 - line);
-
-  // vignette (চারদিকে ডার্ক)
-  float vig = smoothstep(1.4, 0.3, dist);
-  col *= vig;
-
-  // ডার্ক ব্যাকগ্রাউন্ড বেস
-  col += vec3(0.0, 0.05, 0.0);
+  // ডার্ক ব্যাকগ্রাউন্ড বুস্ট
+  col += vec3(0.0, 0.03, 0.0);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -183,7 +218,7 @@ void main(){
       gl.enableVertexAttribArray(loc.p);
       gl.vertexAttribPointer(loc.p, 2, gl.FLOAT, false, 0, 0);
 
-      // আগের মতই মান, কিন্তু নতুন shader এগুলা safe ভাবে use করছে
+      // আগের মতই মান সেট করছি
       gl.uniform1f(loc.density, 5.0);
       gl.uniform1f(loc.scatter, 2.0);
       gl.uniform1f(loc.speed,   2.0);
