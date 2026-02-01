@@ -1,563 +1,212 @@
 <!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Device Security Scan</title>
-  <style>
-    :root {
-      --bg: #020617;
-      --card: #0b1120;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #22c55e;
-      --danger: #ef4444;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        Roboto, sans-serif;
-    }
-
-    body {
-      background: radial-gradient(circle at top, #0f172a, #020617);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-
-    .card {
-      width: 100%;
-      max-width: 420px;
-      background: var(--card);
-      border-radius: 18px;
-      padding: 22px 18px 18px;
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.7);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
-
-    .title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 1.05rem;
-      font-weight: 600;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
-    }
-
-    .badge {
-      font-size: 0.7rem;
-      border-radius: 999px;
-      padding: 4px 8px;
-      border: 1px solid rgba(148, 163, 184, 0.5);
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .status {
-      font-size: 0.9rem;
-      margin-bottom: 18px;
-    }
-
-    .status-main {
-      color: var(--text);
-      font-weight: 500;
-    }
-
-    .status-sub {
-      color: var(--muted);
-      font-size: 0.78rem;
-      margin-top: 4px;
-    }
-
-    .progress-wrapper {
-      margin-bottom: 18px;
-    }
-
-    .progress-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 8px;
-      border-radius: 999px;
-      background: #020617;
-      border: 1px solid rgba(55, 65, 81, 0.8);
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      width: 0%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #22c55e, #22d3ee);
-      box-shadow: 0 0 16px rgba(34, 197, 94, 0.9);
-      transition: width 0.18s linear;
-    }
-
-    .scan-box {
-      margin-bottom: 16px;
-      border-radius: 12px;
-      border: 1px solid rgba(55, 65, 81, 0.9);
-      background: linear-gradient(135deg, #020617, #020617, #111827);
-      padding: 10px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .scan-line {
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(34, 197, 94, 0.9),
-        transparent
-      );
-      opacity: 0.7;
-      animation: scan 1.7s linear infinite;
-    }
-
-    .scan-line:nth-child(2) {
-      animation-delay: 0.3s;
-    }
-
-    .scan-line:nth-child(3) {
-      animation-delay: 0.7s;
-    }
-
-    @keyframes scan {
-      0% { top: 100%; }
-      100% { top: 0%; }
-    }
-
-    .scan-text {
-      position: relative;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-      font-size: 0.68rem;
-      color: rgba(148, 163, 184, 0.8);
-      max-height: 80px;
-      overflow: hidden;
-    }
-
-    .scan-row {
-      white-space: nowrap;
-      opacity: 0.4;
-      transform: translateY(4px);
-      transition: opacity 0.25s ease, transform 0.25s ease;
-    }
-
-    .scan-row.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.7rem;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-    }
-
-    /* ---------- ফেক হ্যাং ওভারলে ---------- */
-
-    .freeze-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.97);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-    }
-
-    .freeze-dialog {
-      width: 88%;
-      max-width: 360px;
-      background: #111827;
-      border-radius: 12px;
-      padding: 16px 14px 10px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
-      border: 1px solid rgba(75, 85, 99, 0.9);
-      color: #f9fafb;
-      font-size: 0.9rem;
-    }
-
-    .freeze-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .freeze-icon {
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      border: 2px solid var(--danger);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      color: var(--danger);
-    }
-
-    .freeze-main {
-      font-weight: 500;
-    }
-
-    .freeze-text {
-      font-size: 0.82rem;
-      color: #e5e7eb;
-      margin-bottom: 10px;
-      margin-left: 32px;
-    }
-
-    .freeze-timer {
-      font-size: 0.8rem;
-      color: #facc15;
-      margin-bottom: 12px;
-      margin-left: 32px;
-    }
-
-    .freeze-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      font-size: 0.86rem;
-      user-select: none;
-    }
-
-    .btn {
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid rgba(75, 85, 99, 0.9);
-      background: #020617;
-      color: #e5e7eb;
-    }
-
-    .btn-accent {
-      background: #1f2937;
-    }
-
-    /* ---------- প্র্যাঙ্ক রিভিল ---------- */
-
-    .reveal {
-      text-align: center;
-      padding: 18px 10px 12px;
-    }
-
-    .reveal-emoji {
-      font-size: 42px;
-      margin-bottom: 6px;
-    }
-
-    .reveal-title {
-      font-size: 1.4rem;
-      font-weight: 800;
-      color: #fca5a5;
-      margin-bottom: 6px;
-    }
-
-    .reveal-text {
-      font-size: 0.96rem;
-      color: #e5e7eb;
-      margin-bottom: 10px;
-    }
-
-    .reveal-small {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .reveal-name {
-      color: #facc15;
-      font-weight: 700;
-    }
-
-    @media (max-width: 380px) {
-      .card {
-        padding: 18px 14px 14px;
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>W8Team</title>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: radial-gradient(circle at top, #0b1120, #020617 60%, #000000);
+        overflow: hidden;
       }
-      .title {
-        font-size: 0.98rem;
+      canvas {
+        width: 100vw;
+        height: 100vh;
+        display: block;
       }
-    }
-  </style>
-</head>
-<body>
-  <!-- হালকা সাউন্ড রাখলে এখানে লিঙ্ক দেবে -->
-  <audio id="prankSound" preload="auto">
-    <!-- <source src="your-sound.mp3" type="audio/mpeg" /> -->
-  </audio>
+    </style>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+    <audio id="bgAudio" src="Louad3.mp3" loop></audio>
 
-  <div class="card" id="card">
-    <div class="header">
-      <div class="title">
-        <div class="dot"></div>
-        <span>Device Security Scan</span>
-      </div>
-      <div class="badge">AI check</div>
-    </div>
+    <script>
+      // Auto-play audio (যতটা ব্রাউজার অনুমতি দেয়)
+      const audio = document.getElementById("bgAudio");
+      audio.volume = 0.9;
+      audio.loop = true;
 
-    <div class="status">
-      <div class="status-main" id="statusMain">
-        আপনার ডিভাইসে ব্যাকডোর / ভাইরাস আছে কিনা চেক করা হচ্ছে…
-      </div>
-      <div class="status-sub">
-        এই সময়ের মধ্যে ব্রাউজার বন্ধ করলে ডাটা লস হতে পারে।
-      </div>
-    </div>
-
-    <div class="progress-wrapper">
-      <div class="progress-label">
-        <span>Scan progress</span>
-        <span id="progressValue">0%</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-    </div>
-
-    <div class="scan-box">
-      <div class="scan-line"></div>
-      <div class="scan-line"></div>
-      <div class="scan-line"></div>
-      <div class="scan-text" id="scanText">
-        <!-- JS থেকে লাইন আসবে -->
-      </div>
-    </div>
-
-    <div class="footer">
-      <span>AI engine v4.2.0</span>
-      <span class="code" id="fakeId">device-id: loading…</span>
-    </div>
-  </div>
-
-  <script>
-    // ======= কনফিগারেশন =======
-    const LOCK_START_DELAY = 3000;   // কত সেকেন্ড পর ফেক হ্যাং শুরু হবে (ms)
-    const LOCK_DURATION = 30000;     // কতক্ষণ লক থাকবে (ms) = ৩০ সেকেন্ড
-
-    // ======= ভুয়া ডিভাইস আইডি =======
-    function randomHex(len) {
-      const chars = "0123456789abcdef";
-      let s = "";
-      for (let i = 0; i < len; i++) {
-        s += chars[Math.floor(Math.random() * chars.length)];
-      }
-      return s;
-    }
-
-    const fakeIdEl = document.getElementById("fakeId");
-    fakeIdEl.textContent = "device-id: " + randomHex(8) + "-" + randomHex(4);
-
-    const progressFill = document.getElementById("progressFill");
-    const progressValue = document.getElementById("progressValue");
-    const statusMain = document.getElementById("statusMain");
-    const scanText = document.getElementById("scanText");
-    const card = document.getElementById("card");
-    const prankSound = document.getElementById("prankSound");
-
-    // ======= স্ক্যান টেক্সট লাইন =======
-    const rows = [
-      ">> loading system kernel modules…",
-      ">> reading /system/priv-app/…",
-      ">> scanning running processes…",
-      ">> checking suspicious permissions…",
-      ">> analyzing background apps…",
-      ">> scanning WhatsApp cache…",
-      ">> scanning Telegram media…",
-      ">> checking browser history…",
-      ">> matching device fingerprint…",
-      ">> generating risk profile…",
-    ];
-
-    let rowIndex = 0;
-    function addRow() {
-      if (rowIndex >= rows.length) return;
-      const p = document.createElement("div");
-      p.className = "scan-row";
-      p.textContent = rows[rowIndex];
-      scanText.appendChild(p);
-      requestAnimationFrame(() => {
-        p.classList.add("show");
+      // Force play on page load
+      window.addEventListener("load", () => {
+        audio.play().catch(e => console.log("Autoplay blocked:", e));
       });
-      scanText.scrollTop = scanText.scrollHeight;
-      rowIndex++;
-    }
 
-    const rowTimer = setInterval(addRow, 600);
+      // Also try to play immediately
+      audio.play().catch(e => {
+        // Fallback: play on any user interaction
+        const playAudio = () => {
+          audio.play();
+          document.removeEventListener("click", playAudio);
+          document.removeEventListener("keydown", playAudio);
+        };
+        document.addEventListener("click", playAudio);
+        document.addEventListener("keydown", playAudio);
+      });
 
-    // ======= প্রগ্রেস =======
-    let progress = 0;
-    const progressTimer = setInterval(() => {
-      if (progress < 90) {
-        const jump = Math.floor(Math.random() * 6) + 2; // 2–7%
-        progress = Math.min(progress + jump, 90);
-        progressFill.style.width = progress + "%";
-        progressValue.textContent = progress + "%";
+      const canvas = document.getElementById("gl");
 
-        if (progress > 40 && progress <= 70) {
-          statusMain.textContent = "গভীর সিস্টেম অ্যানালাইসিস চলছে…";
-        } else if (progress > 70 && progress < 90) {
-          statusMain.textContent =
-            "সিকিউরিটি লেভেল ও প্রাইভেসি রিস্ক মাপা হচ্ছে…";
+      // Click anywhere to restart the sound
+      canvas.addEventListener("click", () => {
+        audio.currentTime = 0;
+        audio.play();
+      });
+
+      const gl = canvas.getContext("webgl");
+      if (!gl) { alert("WebGL not supported"); }
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = innerWidth * dpr;
+        canvas.height = innerHeight * dpr;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+      resize();
+      addEventListener("resize", resize);
+
+      function compile(src, type) {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+          console.error(gl.getShaderInfoLog(s));
         }
-      }
-    }, 300);
-
-    // ======= ফেক হ্যাং ওভারলে =======
-    let freezeOverlay = null;
-    let freezeShown = false;
-    let countdownInterval = null;
-
-    function showFreezeDialog() {
-      if (freezeShown) return;
-      freezeShown = true;
-
-      // প্রগ্রেস 95% এ থামাই
-      progress = 95;
-      progressFill.style.width = progress + "%";
-      progressValue.textContent = progress + "%";
-      statusMain.textContent = "System UI not responding…";
-
-      // হালকা ভাইব্রেশন (সাপোর্ট থাকলে)
-      if (navigator.vibrate) {
-        navigator.vibrate(200);
+        return s;
       }
 
-      freezeOverlay = document.createElement("div");
-      freezeOverlay.className = "freeze-overlay";
+      const vs = compile(
+        `attribute vec2 p;
+         void main(){
+           gl_Position = vec4(p, 0.0, 1.0);
+         }`,
+        gl.VERTEX_SHADER
+      );
 
-      const seconds = Math.floor(LOCK_DURATION / 1000);
-      freezeOverlay.innerHTML = `
-        <div class="freeze-dialog">
-          <div class="freeze-title">
-            <div class="freeze-icon">!</div>
-            <div class="freeze-main">Android system isn’t responding.</div>
-          </div>
-          <div class="freeze-text">
-            Do you want to close it?
-          </div>
-          <div class="freeze-timer">
-            (estimated recovery: <span id="timerCount">${seconds}</span>s)
-          </div>
-          <div class="freeze-buttons">
-            <button class="btn">Wait</button>
-            <button class="btn btn-accent">OK</button>
-          </div>
-        </div>
-      `;
+      const fs = compile(`
+precision highp float;
 
-      // বাটন ক্লিক করলে কিছুই হবে না (পেজের ভেতরে স্টাক ফিল)
-      freezeOverlay.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }, true);
+uniform vec2 R;
+uniform float T;
+uniform float density;
+uniform float scatter;
+uniform float speed;
+uniform float lightI;
 
-      const buttons = freezeOverlay.querySelectorAll("button");
-      buttons.forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        });
-      });
+float noise(vec3 p){
+  float n = 0.0, a = 0.6;
+  for(int i = 0; i < 4; i++){
+    n += (sin(p.x) + sin(p.y) + sin(p.z)) * 0.33 * a;
+    p *= 1.8;
+    a *= 0.55;
+  }
+  return n * 0.5 + 0.5;
+}
 
-      document.body.appendChild(freezeOverlay);
+float field(vec3 p){
+  float base = noise(p * 1.2 + vec3(0.0, T * speed * 0.2, 0.0));
+  float c    = noise(p * 3.0 + vec3(7.0, 2.0, 9.0) + T * speed * 0.5);
+  float h    = smoothstep(0.6, -0.6, p.y);
+  return clamp((base * 0.9 + c * 0.4) * h * density, 0.0, 1.0);
+}
 
-      // কাউন্টডাউন
-      const timerSpan = document.getElementById("timerCount");
-      let remaining = seconds;
-      countdownInterval = setInterval(() => {
-        remaining--;
-        if (remaining < 0) remaining = 0;
-        if (timerSpan) timerSpan.textContent = remaining;
-      }, 1000);
+void main(){
+  vec2 uv = (gl_FragCoord.xy / R) * 2.0 - 1.0;
+  uv.x *= R.x / R.y;
+
+  vec3 ro = vec3(3.0, 1.2, 3.0);
+  vec3 ta = vec3(0.0, 0.4, 0.0);
+  vec3 f  = normalize(ta - ro);
+  vec3 r  = normalize(cross(vec3(0.0, 1.0, 0.0), f));
+  vec3 u  = cross(f, r);
+  vec3 rd = normalize(r * uv.x + u * uv.y + f * 1.6);
+
+  vec3 L = normalize(vec3(-0.5, 0.6, -0.8));
+  vec3 tint = vec3(0.95, 0.35, 0.65); // একটু বেশি পিংকিশ গ্লো
+  // নতুন sky: উপরে ডার্ক পার্পল, নিচে ব্ল্যাক টাইপ গ্রেডিয়েন্ট
+  vec2 suv = gl_FragCoord.xy / R;
+  vec3 skyTop    = vec3(0.06, 0.02, 0.20);
+  vec3 skyBottom = vec3(0.0, 0.0, 0.0);
+  vec3 sky = mix(skyBottom, skyTop, suv.y);
+
+  float t = 0.0, dt = 0.25, md = 20.0, A = 0.0;
+  vec3 C = vec3(0.0);
+
+  for(int i = 0; i < 80; i++){
+    vec3 p = ro + rd * t;
+    float d   = field(p);
+    float ext = d * 1.4;
+
+    float lt = 1.0;
+    vec3 lp = p;
+    for(int j = 0; j < 6; j++){
+      lp += L * 0.8;
+      lt *= exp(-field(lp) * 0.5);
     }
 
-    // ======= প্র্যাঙ্ক রিভিল =======
-    function revealPrank() {
-      clearInterval(progressTimer);
-      clearInterval(rowTimer);
-      if (countdownInterval) clearInterval(countdownInterval);
+    float ph = scatter;
+    vec3 s   = tint * d * lt * lightI * ph;
 
-      progress = 100;
-      progressFill.style.width = "100%";
-      progressValue.textContent = "100%";
+    float a = 1.0 - exp(-ext * dt);
+    a *= (1.0 - A);
 
-      // সাউন্ড প্লে করার চেষ্টা (যদি সেট করা থাকে)
-      if (prankSound && prankSound.play) {
-        prankSound.play().catch(() => {});
+    C += s * a;
+    A += a;
+
+    t += dt;
+    if(t > md || A > 0.99) break;
+  }
+
+  vec3 col = mix(sky, C + sky * 0.25, A);
+  col = pow(col, vec3(0.75));
+  gl_FragColor = vec4(col, 1.0);
+}
+`, gl.FRAGMENT_SHADER);
+
+      const prog = gl.createProgram();
+      gl.attachShader(prog, vs);
+      gl.attachShader(prog, fs);
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([
+          -1,-1,  1,-1, -1, 1,
+          -1, 1,  1,-1,  1, 1
+        ]),
+        gl.STATIC_DRAW
+      );
+
+      const loc = {
+        p:       gl.getAttribLocation(prog, "p"),
+        R:       gl.getUniformLocation(prog, "R"),
+        T:       gl.getUniformLocation(prog, "T"),
+        density: gl.getUniformLocation(prog, "density"),
+        scatter: gl.getUniformLocation(prog, "scatter"),
+        speed:   gl.getUniformLocation(prog, "speed"),
+        lightI:  gl.getUniformLocation(prog, "lightI")
+      };
+
+      gl.enableVertexAttribArray(loc.p);
+      gl.vertexAttribPointer(loc.p, 2, gl.FLOAT, false, 0, 0);
+
+      // MAXIMUM VALUES (আগের মতোই)
+      gl.uniform1f(loc.density, 5.0);
+      gl.uniform1f(loc.scatter, 2.0);
+      gl.uniform1f(loc.speed,   2.0);
+      gl.uniform1f(loc.lightI,  5.0);
+
+      let t0 = performance.now();
+      function draw() {
+        requestAnimationFrame(draw);
+        gl.uniform2f(loc.R, canvas.width, canvas.height);
+        gl.uniform1f(loc.T, (performance.now() - t0) / 1000.0);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
-
-      // ওভারলে সরিয়ে ফেলি
-      if (freezeOverlay && freezeOverlay.parentNode) {
-        freezeOverlay.parentNode.removeChild(freezeOverlay);
-      }
-
-      // আসল প্র্যাঙ্ক মেসেজ
-      card.innerHTML = `
-        <div class="reveal">
-          <div class="reveal-emoji">😈</div>
-          <div class="reveal-title">ধরা খাইছোস!</div>
-          <p class="reveal-text">
-            তোর ফোন আসলে হ্যাং হয়নি, শুধু ব্রাউজারের ভেতরে একটু চালাকি ছিলো।<br>
-            ডাটা, এপ্স, কিছুই ডিলিট হয়নি, কিছুই হ্যাকও হয়নি।
-          </p>
-          <p class="reveal-small">
-            এই প্র্যাঙ্কটা বানিয়েছে
-            <span class="reveal-name">Yasin</span> — এখন তুই চাইলে
-            স্ক্রিনশট নিয়ে প্রমাণ রেখে দিতে পারিস যে তুইও একদিন ফাঁদে পড়ছিলি! 😉
-          </p>
-        </div>
-      `;
-    }
-
-    // কখন থেকে লক শুরু হবে + কতক্ষণ থাকবে
-    setTimeout(showFreezeDialog, LOCK_START_DELAY);
-    setTimeout(
-      revealPrank,
-      LOCK_START_DELAY + LOCK_DURATION
-    );
-  </script>
-</body>
+      draw();
+    </script>
+  </body>
 </html>
