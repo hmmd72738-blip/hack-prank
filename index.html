@@ -8,7 +8,7 @@
       html, body {
         margin: 0;
         height: 100%;
-        background: radial-gradient(circle at top, #0b1120, #020617 60%, #000000);
+        background: #000; /* পিওর ব্ল্যাক ব্যাকগ্রাউন্ড */
         overflow: hidden;
       }
       canvas {
@@ -83,82 +83,72 @@
         gl.VERTEX_SHADER
       );
 
+      // নতুন হ্যাকার / ম্যাট্রিক্স টাইপ fragment shader
       const fs = compile(`
 precision highp float;
 
-uniform vec2 R;
+uniform vec2  R;
 uniform float T;
 uniform float density;
 uniform float scatter;
 uniform float speed;
 uniform float lightI;
 
-float noise(vec3 p){
-  float n = 0.0, a = 0.6;
-  for(int i = 0; i < 4; i++){
-    n += (sin(p.x) + sin(p.y) + sin(p.z)) * 0.33 * a;
-    p *= 1.8;
-    a *= 0.55;
-  }
-  return n * 0.5 + 0.5;
-}
-
-float field(vec3 p){
-  float base = noise(p * 1.2 + vec3(0.0, T * speed * 0.2, 0.0));
-  float c    = noise(p * 3.0 + vec3(7.0, 2.0, 9.0) + T * speed * 0.5);
-  float h    = smoothstep(0.6, -0.6, p.y);
-  return clamp((base * 0.9 + c * 0.4) * h * density, 0.0, 1.0);
+float hash(vec2 p){
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
 }
 
 void main(){
-  vec2 uv = (gl_FragCoord.xy / R) * 2.0 - 1.0;
-  uv.x *= R.x / R.y;
+  // 0–1 UV
+  vec2 uv = gl_FragCoord.xy / R;
+  // Center UV for vignette
+  vec2 cuv = (uv - 0.5) * 2.0;
+  float dist = length(cuv);
 
-  vec3 ro = vec3(3.0, 1.2, 3.0);
-  vec3 ta = vec3(0.0, 0.4, 0.0);
-  vec3 f  = normalize(ta - ro);
-  vec3 r  = normalize(cross(vec3(0.0, 1.0, 0.0), f));
-  vec3 u  = cross(f, r);
-  vec3 rd = normalize(r * uv.x + u * uv.y + f * 1.6);
+  // কলাম / রো সংখ্যা (density দিয়ে একটু কন্ট্রোল)
+  float cols = 60.0 + density * 6.0;  // 60–90
+  float rows = 40.0 + density * 4.0;  // 40–60
 
-  vec3 L = normalize(vec3(-0.5, 0.6, -0.8));
-  vec3 tint = vec3(0.95, 0.35, 0.65); // একটু বেশি পিংকিশ গ্লো
-  // নতুন sky: উপরে ডার্ক পার্পল, নিচে ব্ল্যাক টাইপ গ্রেডিয়েন্ট
-  vec2 suv = gl_FragCoord.xy / R;
-  vec3 skyTop    = vec3(0.06, 0.02, 0.20);
-  vec3 skyBottom = vec3(0.0, 0.0, 0.0);
-  vec3 sky = mix(skyBottom, skyTop, suv.y);
+  // downwards speed (speed দিয়ে কন্ট্রোল)
+  float t = T * (0.7 + speed * 0.2);
 
-  float t = 0.0, dt = 0.25, md = 20.0, A = 0.0;
-  vec3 C = vec3(0.0);
+  // এই পিক্সেল কোন কলাম / রো তে
+  float column = floor(uv.x * cols);
+  float row    = floor((uv.y + t) * rows);
 
-  for(int i = 0; i < 80; i++){
-    vec3 p = ro + rd * t;
-    float d   = field(p);
-    float ext = d * 1.4;
+  // র‍্যান্ডম চিহ্ন অন/অফ
+  float base = hash(vec2(column, row));
 
-    float lt = 1.0;
-    vec3 lp = p;
-    for(int j = 0; j < 6; j++){
-      lp += L * 0.8;
-      lt *= exp(-field(lp) * 0.5);
-    }
+  // রেইন ট্রেইল ইফেক্ট
+  float yPos  = fract(uv.y * rows + t);
+  float trail = exp(-yPos * 10.0);          // নিচের দিকে ট্রেইল
+  float head  = smoothstep(0.0, 0.15, yPos) * 0.9; // হেড অংশ
 
-    float ph = scatter;
-    vec3 s   = tint * d * lt * lightI * ph;
+  // কিছু পিক্সেলই শুধু অন
+  float charOn = step(0.8, base);
 
-    float a = 1.0 - exp(-ext * dt);
-    a *= (1.0 - A);
+  float intensity = (trail + head) * charOn;
 
-    C += s * a;
-    A += a;
+  // lightI দিয়ে গ্লো কিছুটা বাড়ানো/কমানো
+  float glow = 0.4 + lightI * 0.08; // lightI=5 -> ~0.8
+  vec3 green = vec3(0.1, 1.0, 0.3);
+  vec3 col   = vec3(0.0);
 
-    t += dt;
-    if(t > md || A > 0.99) break;
-  }
+  col += green * intensity * glow;
 
-  vec3 col = mix(sky, C + sky * 0.25, A);
-  col = pow(col, vec3(0.75));
+  // subtle scan-line effect
+  float line = sin(gl_FragCoord.y * 3.14159) * 0.04;
+  col *= (1.0 - line);
+
+  // vignette (চারদিকে ডার্ক)
+  float vig = smoothstep(1.4, 0.3, dist);
+  col *= vig;
+
+  // ডার্ক ব্যাকগ্রাউন্ড বেস
+  col += vec3(0.0, 0.05, 0.0);
+
   gl_FragColor = vec4(col, 1.0);
 }
 `, gl.FRAGMENT_SHADER);
@@ -193,7 +183,7 @@ void main(){
       gl.enableVertexAttribArray(loc.p);
       gl.vertexAttribPointer(loc.p, 2, gl.FLOAT, false, 0, 0);
 
-      // MAXIMUM VALUES (আগের মতোই)
+      // আগের মতই মান, কিন্তু নতুন shader এগুলা safe ভাবে use করছে
       gl.uniform1f(loc.density, 5.0);
       gl.uniform1f(loc.scatter, 2.0);
       gl.uniform1f(loc.speed,   2.0);
